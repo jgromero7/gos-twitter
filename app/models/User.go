@@ -8,6 +8,7 @@ import (
 	"github.com/jgromero7/gos-twitter/database"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"golang.org/x/crypto/bcrypt"
 )
 
 // User data structure
@@ -20,6 +21,7 @@ type User struct {
 	Password  string             `bson: "password" json:"password,omitempty"`
 	Avatar    string             `bson: "avatar,omitempty" json:"avatar,omitempty"`
 	Banner    string             `bson: "banner,omitempty" json:"banner,omitempty"`
+	Biography string             `bson: "biography,omitempty" json:"biography,omitempty"`
 	Location  string             `bson: "location,omitempty" json:"location,omitempty"`
 	WebSite   string             `bson: "webSite,omitempty" json:"webSite,omitempty"`
 }
@@ -70,4 +72,49 @@ func ExistsUser(email string) (User, bool, string) {
 	}
 
 	return user, true, ID
+}
+
+// CheckSignIn for auth user
+func CheckSignIn(email string, password string) (User, bool) {
+
+	user, exists, _ := ExistsUser(email)
+
+	if exists == false {
+		return user, false
+	}
+
+	auxPWD := []byte(password)
+	auxPWDDB := []byte(user.Password)
+
+	err := bcrypt.CompareHashAndPassword(auxPWDDB, auxPWD)
+
+	if err != nil {
+		return user, false
+	}
+
+	return user, true
+}
+
+// GetProfile get information of one user
+func GetProfile(ID string) (User, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*15)
+	defer cancel()
+
+	database := database.MongoCN.Database("gos-twitter")
+	collection := database.Collection("user")
+
+	var profile User
+	objectID, _ := primitive.ObjectIDFromHex(ID)
+
+	condition := bson.M{
+		"_id": objectID,
+	}
+
+	err := collection.FindOne(ctx, condition).Decode(&profile)
+	profile.Password = ""
+	if err != nil {
+		return profile, err
+	}
+
+	return profile, nil
 }

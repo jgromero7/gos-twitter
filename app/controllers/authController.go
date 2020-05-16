@@ -3,11 +3,15 @@ package controllers
 import (
 	"encoding/json"
 	"net/http"
+	"time"
 
+	jwt "github.com/dgrijalva/jwt-go"
 	"github.com/jgromero7/gos-twitter/app/models"
+	"github.com/jgromero7/gos-twitter/app/structs"
+	jwtServices "github.com/jgromero7/gos-twitter/jwt"
 )
 
-// SignUp for stoner one user
+// SignUp for store one user
 func SignUp(w http.ResponseWriter, r *http.Request) {
 
 	var user models.User
@@ -47,4 +51,81 @@ func SignUp(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusOK)
+}
+
+// SignIn for auth user
+func SignIn(w http.ResponseWriter, r *http.Request) {
+	w.Header().Add("Content-type", "application/json")
+
+	var user models.User
+
+	err := json.NewDecoder(r.Body).Decode(&user)
+	if err != nil {
+		http.Error(w, "Content Invalid", http.StatusBadRequest)
+		return
+	}
+
+	if len(user.Email) == 0 {
+		http.Error(w, "Email is required", http.StatusBadRequest)
+		return
+	}
+
+	currentUser, exists := models.CheckSignIn(user.Email, user.Password)
+	if exists == false {
+		http.Error(w, "Incorrect user or password", http.StatusBadRequest)
+		return
+	}
+
+	payload := jwt.MapClaims{
+		"_id":       currentUser.ID.Hex(),
+		"name":      currentUser.Name,
+		"lastName":  currentUser.LastName,
+		"birthDate": currentUser.BirthDate,
+		"email":     currentUser.Email,
+		"avatar":    currentUser.Avatar,
+		"banner":    currentUser.Banner,
+		"biography": currentUser.Biography,
+		"location":  currentUser.Location,
+		"webSite":   currentUser.WebSite,
+		"exp":       time.Now().Add(time.Hour * 24).Unix(),
+	}
+
+	jwtKey, err := jwtServices.GenerateJWT(payload)
+	if err != nil {
+		http.Error(w, "the request could not be processed", http.StatusUnprocessableEntity)
+		return
+	}
+
+	dataResponse := structs.ReponseSignIn{
+		Token: jwtKey,
+	}
+
+	w.Header().Set("Content-type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(dataResponse)
+
+	expirateTime := time.Now().Add(24 * time.Hour)
+	http.SetCookie(w, &http.Cookie{
+		Name:    "token",
+		Value:   jwtKey,
+		Expires: expirateTime,
+	})
+}
+
+// Profile show info user
+func Profile(w http.ResponseWriter, r *http.Request) {
+	ID := r.URL.Query().Get("id")
+
+	if len(ID) < 1 {
+		http.Error(w, "The param id is required", http.StatusNotFound)
+	}
+
+	profile, err := models.GetProfile(ID)
+	if err != nil {
+		http.Error(w, "Resource not found", http.StatusNotFound)
+	}
+
+	w.Header().Set("Content-type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(profile)
 }
