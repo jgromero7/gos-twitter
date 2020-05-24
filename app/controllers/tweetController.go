@@ -76,6 +76,32 @@ func ReadTweet(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(tweets)
 }
 
+// ReadTweetFollowers Listing all result specific user
+func ReadTweetFollowers(w http.ResponseWriter, r *http.Request) {
+	w.Header().Add("Content-type", "application/json")
+
+	if len(r.URL.Query().Get("page")) < 1 {
+		http.Error(w, "The param page is required", http.StatusNotAcceptable)
+		return
+	}
+
+	Page, err := strconv.Atoi(r.URL.Query().Get("page"))
+	if err != nil {
+		http.Error(w, "the page parameter must contain a value", http.StatusNotAcceptable)
+		return
+	}
+
+	numberPage := int64(Page)
+	tweetsFollowers, status := models.ReadTweetFollowers(jwtServices.UserID, numberPage)
+	if status == false {
+		http.Error(w, "error reading tweets followers", http.StatusBadRequest)
+	}
+
+	w.Header().Set("Content-type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(tweetsFollowers)
+}
+
 // DeleteTweet delete a register tweet
 func DeleteTweet(w http.ResponseWriter, r *http.Request) {
 	w.Header().Add("Content-type", "application/json")

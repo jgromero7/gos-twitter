@@ -8,6 +8,7 @@ import (
 	"github.com/jgromero7/gos-twitter/database"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo/options"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -17,13 +18,83 @@ type User struct {
 	Name      string             `bson:"name,omitempty" json:"name,omitempty"`
 	LastName  string             `bson:"lastName,omitempty" json:"lastName,omitempty"`
 	BirthDate time.Time          `bson:"birthDate,omitempty" json:"birthDate,omitempty"`
-	Email     string             `bson:"email" json:"email"`
+	Email     string             `bson:"email" json:"email,omitempty"`
 	Password  string             `bson:"password" json:"password,omitempty"`
 	Avatar    string             `bson:"avatar,omitempty" json:"avatar,omitempty"`
 	Banner    string             `bson:"banner,omitempty" json:"banner,omitempty"`
 	Biography string             `bson:"biography,omitempty" json:"biography,omitempty"`
 	Location  string             `bson:"location,omitempty" json:"location,omitempty"`
 	WebSite   string             `bson:"webSite,omitempty" json:"webSite,omitempty"`
+}
+
+// ReadAllUsers get all user by contifion for parameters
+func ReadAllUsers(ID string, page int64, search string, typeUser string) ([]*User, bool) {
+
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+
+	database := database.MongoCN.Database("gos-twitter")
+	collection := database.Collection("user")
+
+	var users []*User
+
+	searchOption := options.Find()
+	searchOption.SetSkip((page - 1) * 20)
+	searchOption.SetLimit(20)
+
+	condition := bson.M{
+		"name": bson.M{"$regex": `(?i)` + search},
+	}
+
+	cursor, err := collection.Find(ctx, condition, searchOption)
+	if err != nil {
+		return users, false
+	}
+
+	var exist, include bool
+	for cursor.Next(ctx) {
+		var user User
+		err := cursor.Decode(&user)
+		if err != nil {
+			return users, false
+		}
+
+		var relation Relation
+		relation.UserID = ID
+		relation.UserRelation = user.ID.Hex()
+
+		include = false
+		exist, err = ReadRelation(relation)
+		if typeUser == "new" && exist == false {
+			include = true
+		}
+		if typeUser == "follow" && exist == true {
+			include = true
+		}
+		if relation.UserRelation == ID {
+			include = false
+		}
+
+		if include == true {
+			user.Password = ""
+			user.Biography = ""
+			user.WebSite = ""
+			user.Location = ""
+			user.Banner = ""
+			user.Email = ""
+
+			users = append(users, &user)
+		}
+	}
+
+	err = cursor.Err()
+	if err != nil {
+		return users, false
+	}
+	cursor.Close(ctx)
+
+	return users, true
+
 }
 
 // CreateUser store a user

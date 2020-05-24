@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/jgromero7/gos-twitter/app/structs"
 	"github.com/jgromero7/gos-twitter/database"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -57,9 +58,9 @@ func Read(userID string, page int64) ([]*Tweet, bool) {
 	}
 
 	searchOption := options.Find()
+	searchOption.SetSkip((page - 1) * 20)
 	searchOption.SetLimit(20)
 	searchOption.SetSort(bson.D{{Key: "creatAt", Value: -1}})
-	searchOption.SetSkip((page - 1) * 20)
 
 	cursor, err := collection.Find(ctx, condition, searchOption)
 	if err != nil {
@@ -77,6 +78,40 @@ func Read(userID string, page int64) ([]*Tweet, bool) {
 	}
 
 	return tweets, true
+}
+
+// ReadTweetFollowers read all tweet of followers specific user
+func ReadTweetFollowers(ID string, page int64) ([]structs.ResponseTweetsFollowers, bool) {
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+
+	database := database.MongoCN.Database("gos-twitter")
+	collection := database.Collection("relation")
+
+	conditions := make([]bson.M, 0)
+	conditions = append(conditions, bson.M{"$match": bson.M{"userid": ID}})
+	conditions = append(conditions, bson.M{
+		"$lookup": bson.M{
+			"from":         "tweet",
+			"localField":   "userrelation",
+			"foreignField": "userid",
+			"as":           "tweet",
+		}})
+	conditions = append(conditions, bson.M{"$unwind": "$tweet"})
+	conditions = append(conditions, bson.M{"$sort": bson.M{"tweet.createdAt": -1}})
+	skip := (page - 1) * 20
+	conditions = append(conditions, bson.M{"$skip": skip})
+	conditions = append(conditions, bson.M{"$limit": 20})
+
+	cursor, err := collection.Aggregate(ctx, conditions)
+	var tweetsFollowers []structs.ResponseTweetsFollowers
+
+	err = cursor.All(ctx, &tweetsFollowers)
+	if err != nil {
+		return tweetsFollowers, false
+	}
+
+	return tweetsFollowers, true
 }
 
 // Delete delete a register tweet
