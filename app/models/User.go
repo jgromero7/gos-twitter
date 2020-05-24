@@ -13,17 +13,17 @@ import (
 
 // User data structure
 type User struct {
-	ID        primitive.ObjectID `bson: "_id,omitempty" json:"id"`
-	Name      string             `bson: "name,omitempty" json:"name,omitempty"`
-	LastName  string             `bson: "lastName,omitempty" json:"lastName,omitempty"`
-	BirthDate time.Time          `bson: "birthDate,omitempty" json:"birthDate,omitempty"`
-	Email     string             `bson: "email" json:"email"`
-	Password  string             `bson: "password" json:"password,omitempty"`
-	Avatar    string             `bson: "avatar,omitempty" json:"avatar,omitempty"`
-	Banner    string             `bson: "banner,omitempty" json:"banner,omitempty"`
-	Biography string             `bson: "biography,omitempty" json:"biography,omitempty"`
-	Location  string             `bson: "location,omitempty" json:"location,omitempty"`
-	WebSite   string             `bson: "webSite,omitempty" json:"webSite,omitempty"`
+	ID        primitive.ObjectID `bson:"_id,omitempty" json:"id"`
+	Name      string             `bson:"name,omitempty" json:"name,omitempty"`
+	LastName  string             `bson:"lastName,omitempty" json:"lastName,omitempty"`
+	BirthDate time.Time          `bson:"birthDate,omitempty" json:"birthDate,omitempty"`
+	Email     string             `bson:"email" json:"email"`
+	Password  string             `bson:"password" json:"password,omitempty"`
+	Avatar    string             `bson:"avatar,omitempty" json:"avatar,omitempty"`
+	Banner    string             `bson:"banner,omitempty" json:"banner,omitempty"`
+	Biography string             `bson:"biography,omitempty" json:"biography,omitempty"`
+	Location  string             `bson:"location,omitempty" json:"location,omitempty"`
+	WebSite   string             `bson:"webSite,omitempty" json:"webSite,omitempty"`
 }
 
 // CreateUser store a user
@@ -95,26 +95,81 @@ func CheckSignIn(email string, password string) (User, bool) {
 	return user, true
 }
 
-// GetProfile get information of one user
-func GetProfile(ID string) (User, error) {
+// GetUser get information of one user
+func GetUser(ID string) (User, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*15)
 	defer cancel()
 
 	database := database.MongoCN.Database("gos-twitter")
 	collection := database.Collection("user")
 
-	var profile User
+	var user User
 	objectID, _ := primitive.ObjectIDFromHex(ID)
 
 	condition := bson.M{
 		"_id": objectID,
 	}
 
-	err := collection.FindOne(ctx, condition).Decode(&profile)
-	profile.Password = ""
+	err := collection.FindOne(ctx, condition).Decode(&user)
+	user.Password = ""
 	if err != nil {
-		return profile, err
+		return user, err
 	}
 
-	return profile, nil
+	return user, nil
+}
+
+// UpdateUser updated information user
+func UpdateUser(user User, ID string) (bool, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*15)
+	defer cancel()
+
+	database := database.MongoCN.Database("gos-twitter")
+	collection := database.Collection("user")
+
+	auxUser := make(map[string]interface{})
+
+	if len(user.Name) > 0 {
+		auxUser["nombre"] = user.Name
+	}
+
+	if len(user.LastName) > 0 {
+		auxUser["lastName"] = user.LastName
+	}
+
+	auxUser["birthDate"] = user.BirthDate
+
+	if len(user.Avatar) > 0 {
+		auxUser["avatar"] = user.Avatar
+	}
+
+	if len(user.Banner) > 0 {
+		auxUser["banner"] = user.Banner
+	}
+
+	if len(user.Biography) > 0 {
+		auxUser["biography"] = user.Biography
+	}
+
+	if len(user.Location) > 0 {
+		auxUser["location"] = user.Location
+	}
+
+	if len(user.WebSite) > 0 {
+		auxUser["webSite"] = user.WebSite
+	}
+
+	updatedString := bson.M{
+		"$set": auxUser,
+	}
+	objectID, _ := primitive.ObjectIDFromHex(ID)
+
+	condition := bson.M{"_id": bson.M{"$eq": objectID}}
+
+	_, err := collection.UpdateOne(ctx, condition, updatedString)
+	if err != nil {
+		return false, err
+	}
+
+	return true, nil
 }

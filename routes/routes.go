@@ -13,6 +13,7 @@ func Routes() *mux.Router {
 	router.HandleFunc("/signUp", middleware.CheckDataBase(controllers.SignUp)).Methods("POST")
 	router.HandleFunc("/signIn", middleware.CheckDataBase(controllers.SignIn)).Methods("POST")
 	router.HandleFunc("/profile", middleware.CheckDataBase(middleware.CheckJWT(controllers.Profile))).Methods("GET")
+	router.HandleFunc("/profile", middleware.CheckDataBase(middleware.CheckJWT(controllers.UpdateProfile))).Methods("PUT")
 
 	return router
 }

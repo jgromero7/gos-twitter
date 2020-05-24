@@ -10,7 +10,10 @@ import (
 	jwt "github.com/dgrijalva/jwt-go"
 )
 
+// UserID id current user Auth
 var UserID string
+
+// UserEmail email current user Auth
 var UserEmail string
 
 // GenerateJWT method generate one token for user

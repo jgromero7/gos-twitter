@@ -114,13 +114,15 @@ func SignIn(w http.ResponseWriter, r *http.Request) {
 
 // Profile show info user
 func Profile(w http.ResponseWriter, r *http.Request) {
+	w.Header().Add("Content-type", "application/json")
+
 	ID := r.URL.Query().Get("id")
 
 	if len(ID) < 1 {
 		http.Error(w, "The param id is required", http.StatusNotFound)
 	}
 
-	profile, err := models.GetProfile(ID)
+	profile, err := models.GetUser(ID)
 	if err != nil {
 		http.Error(w, "Resource not found", http.StatusNotFound)
 	}
@@ -128,4 +130,33 @@ func Profile(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(profile)
+}
+
+// UpdateProfile updated info user
+func UpdateProfile(w http.ResponseWriter, r *http.Request) {
+	w.Header().Add("Content-type", "application/json")
+
+	var user models.User
+	err := json.NewDecoder(r.Body).Decode(&user)
+
+	if err != nil {
+		http.Error(w, "The data sent is not correct", http.StatusBadRequest)
+		return
+	}
+
+	// UserID proviene del JWT file decodeToken
+	var status bool
+	status, err = models.UpdateUser(user, jwtServices.UserID)
+	if err != nil {
+		http.Error(w, "An error occurred while updating the user", http.StatusBadRequest)
+		return
+	}
+
+	if status == false {
+		http.Error(w, "Could not update user", http.StatusBadRequest)
+		return
+	}
+
+	w.Header().Set("Content-type", "application/json")
+	w.WriteHeader(http.StatusOK)
 }
