@@ -47,9 +47,9 @@ func CreateUser(user User) (string, bool, error) {
 		return "", false, err
 	}
 
-	ObjID, _ := result.InsertedID.(primitive.ObjectID)
+	objID, _ := result.InsertedID.(primitive.ObjectID)
 
-	return ObjID.String(), true, nil
+	return objID.String(), true, nil
 }
 
 // ExistsUser verify if a user exists

@@ -38,7 +38,7 @@ func DecodeJWT(token string) (*structs.Claim, bool, string, error) {
 
 	auxToken := strings.Split(token, "Bearer")
 	if len(auxToken) != 2 {
-		return claim, false, string(""), errors.New("Format Token Ivalid")
+		return claim, false, "", errors.New("Format Token Ivalid")
 	}
 
 	token = strings.TrimSpace(auxToken[1])
@@ -57,8 +57,8 @@ func DecodeJWT(token string) (*structs.Claim, bool, string, error) {
 	}
 
 	if !currentToken.Valid {
-		return claim, false, string(""), errors.New("Format Token Ivalid")
+		return claim, false, "", errors.New("Format Token Ivalid")
 	}
 
-	return claim, false, string(""), err
+	return claim, false, "", err
 }

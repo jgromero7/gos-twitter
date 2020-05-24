@@ -13,6 +13,7 @@ import (
 
 // SignUp for store one user
 func SignUp(w http.ResponseWriter, r *http.Request) {
+	w.Header().Add("Content-type", "application/json")
 
 	var user models.User
 
@@ -50,6 +51,7 @@ func SignUp(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	w.Header().Set("Content-type", "application/json")
 	w.WriteHeader(http.StatusOK)
 }
 
@@ -120,11 +122,13 @@ func Profile(w http.ResponseWriter, r *http.Request) {
 
 	if len(ID) < 1 {
 		http.Error(w, "The param id is required", http.StatusNotFound)
+		return
 	}
 
 	profile, err := models.GetUser(ID)
 	if err != nil {
 		http.Error(w, "Resource not found", http.StatusNotFound)
+		return
 	}
 
 	w.Header().Set("Content-type", "application/json")
